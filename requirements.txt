@@ -6,3 +6,4 @@ fpdf
 Pillow
 werkzeug
 google-generativeai
+gunicorn
