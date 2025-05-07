@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from io import BytesIO
-
+import time
 import numpy as np
 import tensorflow as tf
 from flask import Flask, request, jsonify, send_file
@@ -217,8 +217,12 @@ def home():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    start_time = time.time()
+    print("[DEBUG] Received /predict request")
+
     # 1) Validate input
     if "image" not in request.files:
+        print("[ERROR] Missing 'image' field")
         return jsonify({"error": "Missing `image` field"}), 400
 
     image = request.files["image"]
@@ -227,25 +231,35 @@ def predict():
     gender= request.form.get("gender")
 
     if not all([name, age, gender]):
+        print("[ERROR] Missing patient info (name, age, gender)")
         return jsonify({"error": "Missing patient info (name, age, gender)"}), 400
+
+    print("[DEBUG] Inputs validated:", name, age, gender)
 
     # 2) Save upload
     filename   = secure_filename(image.filename)
     save_path  = os.path.join(UPLOAD_FOLDER, filename)
     image.save(save_path)
+    print(f"[DEBUG] File saved at {save_path} ({time.time() - start_time:.2f}s)")
 
     try:
         # 3) Model inference
         feats = preprocess_image(save_path)
+        print(f"[DEBUG] Image preprocessed ({time.time() - start_time:.2f}s)")
+
         preds = ecg_model.predict(feats, verbose=0)
+        print(f"[DEBUG] Model predicted ({time.time() - start_time:.2f}s)")
+
         idx   = int(np.argmax(preds))
         label = CLASS_NAMES[idx]
         conf  = float(np.max(preds)) * 100
+        print(f"[DEBUG] Prediction result: {label}, confidence: {conf:.2f}%")
 
         # 4) LLM recommendation
-        rec  = get_llm_recommendation(label,name,age,gender)
+        rec  = get_llm_recommendation(label, name, age, gender)
+        print(f"[DEBUG] LLM recommendation obtained ({time.time() - start_time:.2f}s)")
 
-        # 5) Generate PDF with sanitized inputs
+        # 5) Generate PDF
         patient = {
             "name": sanitize_text(name),
             "age": sanitize_text(age),
@@ -257,6 +271,7 @@ def predict():
             "recommendation": sanitize_text(rec)
         }
         pdf_io = generate_pdf(patient, result, save_path)
+        print(f"[DEBUG] PDF generated ({time.time() - start_time:.2f}s)")
 
         # 6) Return PDF
         return send_file(
@@ -267,8 +282,8 @@ def predict():
         )
 
     except Exception as e:
+        print(f"[ERROR] Exception occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 
 # ─── Run ────────────────────────────────────────────────────────────────────────
 
