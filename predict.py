@@ -25,7 +25,7 @@ genai.configure(api_key="AIzaSyCc7orrlpozTChPcGL98_WX_3og6Q3XooE")
 gemini = genai.GenerativeModel("models/gemini-1.5-flash-latest")
 
 # ECG Keras model
-ECG_MODEL_PATH = "ecg_lstm_model.h5"
+ECG_MODEL_PATH = "./ecg_lstm_model.h5"
 ecg_model = tf.keras.models.load_model(ECG_MODEL_PATH, compile=False)
 ecg_model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
